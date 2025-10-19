@@ -39,6 +39,8 @@ _ADV_APPEARANCE_GENERIC_THERMOMETER = const(768)
 _ADV_INTERVAL_MS = 250_000
 
 pin = Pin("LED", Pin.OUT)
+trigger = Pin(1, Pin.OUT)
+trigger.value(0)
 
 # Register GATT server.
 temp_service = aioble.Service(_ENV_SENSE_UUID)
@@ -74,6 +76,7 @@ async def peripheral_task():
             appearance=_ADV_APPEARANCE_GENERIC_THERMOMETER,
         ) as connection:
             pin.value(1)
+            trigger.value(1)
             print("Connection from", connection.device)
             await connection.disconnected(timeout_ms=None)
 
