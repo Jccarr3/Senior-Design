@@ -62,10 +62,10 @@ async def main():
             return
 
         while connection.is_connected():
-            temp_deg_c = _decode_temperature(await temp_characteristic.read())
+            #temp_deg_c = _decode_temperature(await temp_characteristic.read())
             pin.value(not pin.value())
-            print("Temperature: {:.2f}".format(temp_deg_c))
-            await asyncio.sleep_ms(1000)
+            #print("Temperature: {:.2f}".format(temp_deg_c))
+            await asyncio.sleep_ms(200)
 
 
 asyncio.run(main())

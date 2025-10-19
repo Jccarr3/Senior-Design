@@ -80,9 +80,9 @@ async def peripheral_task():
 
 # Run both tasks.
 async def main():
-    t1 = asyncio.create_task(sensor_task())
+    #t1 = asyncio.create_task(sensor_task())
     t2 = asyncio.create_task(peripheral_task())
-    await asyncio.gather(t1, t2)
+    await asyncio.gather(t2)
 
 
 asyncio.run(main())
