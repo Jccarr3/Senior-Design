@@ -75,6 +75,7 @@ async def peripheral_task():
             services=[_ENV_SENSE_UUID],
             appearance=_ADV_APPEARANCE_GENERIC_THERMOMETER,
         ) as connection:
+            await asyncio.sleep_ms(670)             #done to balance difference in PICO timings
             pin.value(1)
             trigger.value(1)
             print("Connection from", connection.device)
