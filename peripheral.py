@@ -36,7 +36,7 @@ _ENV_SENSE_TEMP_UUID = bluetooth.UUID(0x2A6E)
 _ADV_APPEARANCE_GENERIC_THERMOMETER = const(768)
 
 # How frequently to send advertising beacons.
-_ADV_INTERVAL_MS = 250_000
+_ADV_INTERVAL_MS = 5000
 
 pin = Pin("LED", Pin.OUT)
 trigger = Pin(0, Pin.OUT)
