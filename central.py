@@ -14,7 +14,9 @@ import random
 import struct
 
 pin = Pin("LED", Pin.OUT)
+trigger = Pin(0, Pin.OUT)
 pin.value(0)
+trigger.value(0)
 
 
 # org.bluetooth.service.environmental_sensing
@@ -61,6 +63,7 @@ async def main():
             print("Timeout discovering services/characteristics")
             return
 
+        trigger.value(1)
         while connection.is_connected():
             #temp_deg_c = _decode_temperature(await temp_characteristic.read())
             pin.value(not pin.value())

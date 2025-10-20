@@ -39,7 +39,8 @@ _ADV_APPEARANCE_GENERIC_THERMOMETER = const(768)
 _ADV_INTERVAL_MS = 250_000
 
 pin = Pin("LED", Pin.OUT)
-trigger = Pin(1, Pin.OUT)
+trigger = Pin(0, Pin.OUT)
+pin.value(0)
 trigger.value(0)
 
 # Register GATT server.
@@ -48,7 +49,6 @@ temp_characteristic = aioble.Characteristic(
     temp_service, _ENV_SENSE_TEMP_UUID, read=True, notify=True
 )
 aioble.register_services(temp_service)
-pin.value(0)
 
 
 # Helper to encode the temperature characteristic encoding (sint16, hundredths of a degree).
