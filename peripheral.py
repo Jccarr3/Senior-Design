@@ -39,7 +39,7 @@ _ADV_APPEARANCE_GENERIC_THERMOMETER = const(768)
 _ADV_INTERVAL_MS = 250_000
 
 pin = Pin("LED", Pin.OUT)
-trigger = Pin(0, Pin.OUT)
+trigger = Pin(16, Pin.OUT)
 pin.value(0)
 trigger.value(0)
 

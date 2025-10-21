@@ -14,7 +14,7 @@ import random
 import struct
 
 pin = Pin("LED", Pin.OUT)
-trigger = Pin(0, Pin.OUT)
+trigger = Pin(16, Pin.OUT)
 pin.value(0)
 trigger.value(0)
 
