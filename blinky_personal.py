@@ -4,6 +4,8 @@ import time
 from machine import Pin
 
 led = Pin(25, Pin.OUT)
+enable = Pin(29, Pin.OUT)
+enable.value(1)  # power on the sensor
 trigger = Pin(28, Pin.IN, Pin.PULL_DOWN)
 
 flag = 0

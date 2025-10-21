@@ -13,9 +13,15 @@ import bluetooth
 import random
 import struct
 
+import time             #used for initial delay of execution
+
+
+
+time.sleep_ms(7000)    #initial delay to allow time to set up both devices
+
 pin = Pin("LED", Pin.OUT)
 trigger = Pin(16, Pin.OUT)
-pin.value(0)
+pin.value(1)
 trigger.value(0)
 
 

@@ -28,6 +28,10 @@ import bluetooth
 import random
 import struct
 
+import time             #used for initial delay of execution
+
+
+time.sleep_ms(7000)    #initial delay to allow time to set up both devices
 # org.bluetooth.service.environmental_sensing
 _ENV_SENSE_UUID = bluetooth.UUID(0x181A)
 # org.bluetooth.characteristic.temperature
