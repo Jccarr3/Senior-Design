@@ -8,7 +8,7 @@ class Display(sh1106_shared_spi.SH1106SharedSpi):
         spi = SPI(id=0, baudrate=4000000, polarity=0, phase=0, sck=sck_pin, mosi=Pin(3), miso=None)
         dc = Pin(0)   # data/command
         res = Pin(1)  # reset
-        super().__init__(128, 64, spi, dc, sck_pin, res=res, rotate=180)
+        super().__init__(128, 64, spi, dc, sck_pin, res=res, rotate=360)
 
     def load_pbm(self, filename):
         with open(filename, 'rb') as f:

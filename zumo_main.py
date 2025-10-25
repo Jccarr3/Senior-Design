@@ -1,7 +1,3 @@
-
-import sys
-
-
 try:
     from zumo_2040_robot.extras.splash_loader import splash_loader
     splash_loader(
