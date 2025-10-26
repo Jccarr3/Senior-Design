@@ -4,7 +4,7 @@ def splash_loader(*, default_program, splash_delay_s, run_file_delay_ms):
     splash = None
     if splash_delay_s:
         # Display the splash screen ASAP.
-        splash = display.load_pbm("zumo_2040_robot/extras/splash.pbm")
+        splash = display.load_pbm("zumo_2040_robot/extras/untitled.pbm")
         display.blit(splash, 0, 0)
         display.show()
 
