@@ -22,7 +22,10 @@
 #   NOTE #1: While the main system output is the behavior of the motors, control signals may communicate the current internal behavior of the machine by controlling the sensory output peripherals. However, this does not affect the state generation as this is just the UI representation of control signals. 
 #   NOTE #2: This is just a preliminary software based controller and it's actual implementation is subject to change in this and other versions of competiton software. 
 
-
+#JORDAN COMMENTS!!!!!!!!!!!!!!!
+#  Charge State:
+#     - While charging at robot itilize PID control system to make constant adjustments while charging.
+#     - When close enoughh to opponent robot, set state to "PIT" which will circle the robot and hit its side
 from zumo_2040_robot import robot
 import time
 from machine import Pin
@@ -34,19 +37,27 @@ flag = 0
 state = "REST"
 prev_time = 0                                #used for letting controller know when to check stuff
 
+   #display
 display = robot.Display()
 
+   #leds
 rgbs = robot.RGBLEDs()
 rgbs.set_brightness(3)
 
+   #buttons
 button_a = robot.ButtonA()
+
+   #line sensors
+line_sensors = robot.LineSensors()
+
+
 #important variables/objects
 
 
 #function for setting up NC STATE identifier
 def show_NCSTATE():
    flip = 0
-   tuffy = display.load_pbm("zumo_2040_robot/extras/tuffy.pbm")
+   tuffy = display.load_pbm("zumo_display/tuffy.pbm")
    display.blit(tuffy, 0, 0)
 
    for led in range(6):
@@ -67,21 +78,45 @@ def show_NCSTATE():
 show_NCSTATE()
 #setup team identifier
 
+#line detection function
+def floor_scan():
+   global state
+   line_sensors.start_read(emitters_on = True)
+   time.sleep_ms(2)
 
+   line = line_sensors.read()
+   if any(value < 200 for value in line):                               #the value 500 is currently arbitrary and can be adjusted later on
+      state = "RECOVER"
+
+#line detection function
 
 
 
 #main code execution
 while True:
    #polling for button input/trigger
-   if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
-      prev_time = time.ticks_ms()
+   if flag == 0:
+      if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
+         prev_time = time.ticks_ms()
+         if button_a.is_pressed():                       #check for start signal from button A
+            line_sensors.calibrate()                  #calibrate line sensors 
 
-      if button_a.is_pressed():                       #check for start signal from button A
-         time.sleep(3)
-         display.fill(0)
-         tuffy = display.load_pbm("zumo_2040_robot/extras/signal_received.pbm")
-         display.blit(tuffy, 0, 0)
-         display.show()
-
+            flag = 1
+            state = "SEARCH"                             #set initial fight state
+            display.fill(0)
+            tuffy = display.load_pbm("zumo_display/signal_received.pbm")
+            display.blit(tuffy, 0, 0)
+            display.show()
+   else:
+      floor_scan()
+      if state == "START":
+         print("do start stuff")
+      if state == "DEFAULT":
+         print("burst and retreat")
+      if state == "RECOVER":
+         rgbs.off()
+      if state == "RETREAT":
+         print("running from opponent robot")
+      if state == "CHARGE":
+         print("charge when robot centered")
       
