@@ -34,7 +34,8 @@ from machine import Pin
 led = Pin(25, Pin.OUT)
 trigger = Pin(28, Pin.IN, Pin.PULL_DOWN)
 flag = 0
-state = "REST"
+left_retreat_flag , right_retreat_flag = 0, 0      #flags used to set proper retreat state
+state = "START"
 prev_time = 0                                #used for letting controller know when to check stuff
 
    #display
@@ -50,6 +51,11 @@ button_a = robot.ButtonA()
    #line sensors
 line_sensors = robot.LineSensors()
 
+   #proximity sensors
+proximity_sensors = robot.ProximitySensors()
+
+   #motors
+motors = robot.Motors()
 
 #important variables/objects
 
@@ -80,18 +86,45 @@ show_NCSTATE()
 
 #line detection function
 def floor_scan():
-   global state
+   global left_retreat_flag, right_retreat_flag, state
    line_sensors.start_read(emitters_on = True)
    time.sleep_ms(2)
 
    line = line_sensors.read()
-   if any(value < 200 for value in line):                               #the value 500 is currently arbitrary and can be adjusted later on
-      state = "RECOVER"
-
+   for i in range(5):
+      if((line[i] < 500) and (i <= 1)):
+         state = "RECOVER"
+         right_retreat_flag = 1
+         break
+      elif((line[i] < 500) and (i > 2)):
+         left_retreat_flag = 1
+         state = "RECOVER"
+         break
+         
 #line detection function
 
+#proximity detection function
+def proximity_scan():
+   proximity_sensors.read()
 
+   readings = [proximity_sensors.left_counts_with_left_leds(),]
+   #set global for which sensors detected enemy
 
+#proximity detection function
+
+#ALL FUNCTIONS INVOLVING MOTORS
+   #right recovery function(used for recovering from edge detection)
+def right_recovery():
+   motors.set_speeds(-1*5800,-1*1800)
+   time.sleep_ms(750)
+   motors.off()
+   #right recovery function(used for recovering from edge detection)
+
+   #left recovery function(used for recovering from edge detection)
+def left_recovery():
+   motors.set_speeds(-1*1800,-1*5800)
+   time.sleep_ms(750)
+   motors.off()
 #main code execution
 while True:
    #polling for button input/trigger
@@ -102,21 +135,48 @@ while True:
             line_sensors.calibrate()                  #calibrate line sensors 
 
             flag = 1
-            state = "SEARCH"                             #set initial fight state
+            state = "START"                             #set initial fight state
             display.fill(0)
             tuffy = display.load_pbm("zumo_display/signal_received.pbm")
             display.blit(tuffy, 0, 0)
             display.show()
    else:
       floor_scan()
+      proximity_scan()
+      #code for proximity
       if state == "START":
-         print("do start stuff")
+         motors.set_speeds(6000,6000)
       if state == "DEFAULT":
          print("burst and retreat")
       if state == "RECOVER":
-         rgbs.off()
+         if right_retreat_flag == 1:
+            right_retreat_flag = 0
+            right_recovery()
+            state = "DEFAULT"
+         if left_retreat_flag == 1:
+            left_retreat_flag = 0
+            left_recovery()
+            state = "DEFAULT"
       if state == "RETREAT":
          print("running from opponent robot")
       if state == "CHARGE":
          print("charge when robot centered")
-      
+
+# ===========================================================================================================================================================================================       
+# Centralized State-Based Machine Controller 
+# Version: 1
+#
+# Revision History:
+# 10/27/25 Jordan Carr, Rohit Sood - Created Version 1 
+#
+# States: 
+#     1. Defense - The Defense state of the machine controller is a specialized, prioritized state designed to immediately recover the robot when one or more of its IR line detectors is
+#        above the white line detection threshold. The robot will take different recovery patterns based on the set detection flags. If only one or two of the far-side IR line detectors 
+#        is above the threshold, the robot should take a wide sweeping motion away from the edge in the direction of the side with the non-triggered sensors. 
+#        If both sides of the 5-sensor array are triggered or the center sensor is fully saturated, the robot should immediately commence a time-based, straight-line reverse. At the 
+#        half-way point the robot should make a quick 180 degree turn and continue its trajectory until it reaches the center (i.e. when the timer expires). The 180 degree turn accomplishes two primary goals:
+#           a) It allows the robot to scan the arena using its front and side-facing proximity sensors.
+#           b) It equally splits time between both blind spot directions. When the robot is initially reversing from the edge it cannot detect anything behind it (i.e. anything further away from the edge). 
+#              Turning halfway through the retreat process allows the robot to change its blind spot.
+#        The 180 degree turn is a critical opportunity to scan for the opponent and immediately engage in an offensive charge if the turn revealed the targets direction and/or position. 
+#     2. Offense
