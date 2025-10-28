@@ -26,21 +26,23 @@ display = robot.Display()
 
 # LEDs
 rgbs = robot.RGBLEDs()
-rgbs.set_brightness(3)
+rgbs.set_brightness(1)
 
 # Buttons
 button_a = robot.ButtonA()
 
 # Line Sensors
 line_sensors = robot.LineSensors()
+black = 0
 
 # Proximity Sensors
 proximity_sensors = robot.ProximitySensors()
    # ========== TRACKING CONSTANTS ==========
 SENSOR_THRESHOLD = const(1)
-TURN_SPEED_MAX = const(2500)
+MAX_SPEED = const(6000)
+TURN_SPEED_MAX = const(1800)
 TURN_SPEED_MIN = const(1500)
-CHARGE_SPEED = const(5000)
+CHARGE_SPEED = 2500
 DECELERATION = const(150)
 ACCELERATION = const(150)
 DIR_LEFT = const(0)
@@ -64,7 +66,7 @@ def show_NCSTATE():
    tuffy = display.load_pbm("zumo_display/tuffy.pbm")
    display.blit(tuffy, 0, 0)
 
-   for led in range(6):
+   for led in range(3):
       if (flip) == 0:
          rgbs.set(led,[255,0,0])
       else:
@@ -90,11 +92,11 @@ def floor_scan():
 
    line = line_sensors.read()
    for i in range(5):
-      if((line[i] < 500) and (i <= 1)):
+      if((line[i] < (black - 300)) and (i <= 1)):
          state = "RECOVER"
          right_retreat_flag = 1
          break
-      elif((line[i] < 500) and (i > 2)):
+      elif((line[i] < (black - 300)) and (i > 2)):
          left_retreat_flag = 1
          state = "RECOVER"
          break
@@ -170,22 +172,27 @@ while True:
          prev_time = time.ticks_ms()
          if button_a.is_pressed():                       #check for start signal from button A
             line_sensors.calibrate()                  #calibrate line sensors 
+            black = line_sensors.read()[2]
 
             flag = 1
             state = "START"                             #set initial fight state
             tuffy = display.load_pbm("zumo_display/signal_received.pbm")
             display.blit(tuffy, 0, 0)
             display.show()
+            #time.sleep_ms(1000)
    
    #Main fight code loop
    else:
       floor_scan()
-      proximity_scan()
+
+      if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
+         prev_time = time.ticks_ms()
+         proximity_scan()
       #code for proximity
       if state == "START":
          go = random.randint(1, 2)
          if go == 1:                      #speed blitz
-            motors.set_speeds(6000,6000)
+            motors.set_speeds(5500,5500)
          if go == 2:                      #question mark shape to get behind opponent 
             question_mark_kick()
          state = "ATTACK"
@@ -214,19 +221,25 @@ while True:
          
          if object_seen:
             # --- Object IS Seen ---
-            if max(reading_left, reading_front_left) < max(reading_right, reading_front_right):
-               # Object is to the right, turn right
-               turn_right()
-               sense_dir = DIR_RIGHT
+            if abs(max(reading_left, reading_front_left) - max(reading_right, reading_front_right)) <= 1:
+               # Object is centered, charge forward
+               back_to = state
+               state = "TIMER"
+               escape_time = time.ticks_ms() + 300
+               charge_forward()  # This will now run
+               rgbs.set(4, [255,255,255])
+               rgbs.show()
 
             elif max(reading_left, reading_front_left) > max(reading_right, reading_front_right):
                # Object is to the left, turn left
                turn_left()
                sense_dir = DIR_LEFT
 
-            elif abs(max(reading_left, reading_front_left) - max(reading_right, reading_front_right)) <= 3:
-               # Object is centered, charge forward
-               charge_forward()  # This will now run
+            elif max(reading_left, reading_front_left) < max(reading_right, reading_front_right):
+                # Object is to the right, turn right
+               turn_right()
+               sense_dir = DIR_RIGHT
+               
          else:
             # --- Object is NOT Seen ---
             # Keep turning in the direction we last sensed the object.
@@ -237,6 +250,8 @@ while True:
                turn_left() # This will now run
       # ==============================
       if state == "RECOVER":
+         rgbs.set(4, [0,0,0])
+         rgbs.show()
          if right_retreat_flag == 1:
             right_retreat_flag = 0
             right_recovery()
@@ -246,7 +261,17 @@ while True:
             left_recovery()
             state = "ATTACK"
 
-
+      if state == "TIMER":
+         if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
+            if(CHARGE_SPEED < MAX_SPEED):
+               CHARGE_SPEED += 85
+               motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
+         if(time.ticks_ms() >= escape_time):
+            CHARGE_SPEED = 2500
+            state = back_to
+            rgbs.set(4, [0,0,0])
+            rgbs.show()
+            
 # ===========================================================================================================================================================================================       
 # Centralized State-Based Machine Controller 
 # Version: 1
