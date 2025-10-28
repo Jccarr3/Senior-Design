@@ -194,5 +194,5 @@ while True:
 #           a) It allows the robot to scan the arena using its front and side-facing proximity sensors.
 #           b) It equally splits time between both blind spot directions. When the robot is initially reversing from the edge it cannot detect anything behind it (i.e. anything further away from the edge). 
 #              Turning halfway through the retreat process allows the robot to change its blind spot.
-#        The 180 degree turn is a critical opportunity to scan for the opponent and immediately engage in an offensive charge if the turn revealed the targets direction and/or position. 
+#        The 180 degree turn is a critical opportunity to scan for the opponent and immediately engage in an offensive charge in the event of a detection. 
 #     2. Offense
