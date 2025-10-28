@@ -29,6 +29,7 @@
 from zumo_2040_robot import robot
 import time
 from machine import Pin
+import random
 
 #important variables/objects
 led = Pin(25, Pin.OUT)
@@ -125,6 +126,17 @@ def left_recovery():
    motors.set_speeds(-1*1800,-1*5800)
    time.sleep_ms(750)
    motors.off()
+   #left recovery function(used for recovering from edge detection)
+
+   #Question mark shape(used as a startup option to get behind opponent)
+def question_mark_kick():
+   motors.set_speeds(-1*1800,-1*5800)
+   time.sleep_ms(1100)
+   motors.set_speeds(-1*5800,-1*1800)
+   time.sleep_ms(500)
+   motors.off()
+   #Question mark shape(used as a startup option to get behind opponent
+
 #main code execution
 while True:
    #polling for button input/trigger
@@ -141,11 +153,16 @@ while True:
             display.blit(tuffy, 0, 0)
             display.show()
    else:
-      floor_scan()
+      #floor_scan()
       proximity_scan()
       #code for proximity
       if state == "START":
-         motors.set_speeds(6000,6000)
+         go = random.randint(1, 2)
+         if go == 1:                      #speed blitz
+            motors.set_speeds(6000,6000)
+         if go == 2:                      #question mark shape to get behind opponent 
+            question_mark_kick()
+         state = "DEFAULT"
       if state == "DEFAULT":
          print("burst and retreat")
       if state == "RECOVER":
