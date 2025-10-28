@@ -3,7 +3,6 @@ import time
 from machine import Pin
 import random
 
-led = Pin(25, Pin.OUT)
 trigger = Pin(28, Pin.IN, Pin.PULL_DOWN)
 flag = 0
 left_retreat_flag , right_retreat_flag = 0, 0 
