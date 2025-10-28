@@ -153,7 +153,7 @@ while True:
             display.blit(tuffy, 0, 0)
             display.show()
    else:
-      #floor_scan()
+      floor_scan()
       proximity_scan()
       #code for proximity
       if state == "START":
