@@ -264,7 +264,7 @@ while True:
       if state == "TIMER":
          if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
             if(CHARGE_SPEED < MAX_SPEED):
-               CHARGE_SPEED += 85
+               CHARGE_SPEED += 100
                motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
          if(time.ticks_ms() >= escape_time):
             CHARGE_SPEED = 2500
