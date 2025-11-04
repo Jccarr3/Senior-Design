@@ -37,6 +37,13 @@ black = 0
 
 # Proximity Sensors
 proximity_sensors = robot.ProximitySensors()
+
+# IMU 
+imu = robot.IMU()
+imu.reset()
+imu.enable_default()
+velocity = 0         #used for calculating speed
+
    # ========== TRACKING CONSTANTS ==========
 SENSOR_THRESHOLD = const(1)
 MAX_SPEED = const(6000)
@@ -68,7 +75,7 @@ def show_NCSTATE():
 
    for led in range(3):
       if (flip) == 0:
-         rgbs.set(led,[255,0,0])
+         rgbs.set(led,[0,255,0])
       else:
          rgbs.set(led,[200,200,200])
 
@@ -179,7 +186,7 @@ while True:
             tuffy = display.load_pbm("zumo_display/signal_received.pbm")
             display.blit(tuffy, 0, 0)
             display.show()
-            #time.sleep_ms(1000)
+            time.sleep_ms(1000)
    
    #Main fight code loop
    else:
@@ -225,6 +232,7 @@ while True:
                # Object is centered, charge forward
                back_to = state
                state = "TIMER"
+               prev = 0
                escape_time = time.ticks_ms() + 300
                charge_forward()  # This will now run
                rgbs.set(4, [255,255,255])
@@ -266,6 +274,20 @@ while True:
             if(CHARGE_SPEED < MAX_SPEED):
                CHARGE_SPEED += 100
                motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
+            
+            
+            imu.read()
+            acc = imu.acc.last_reading_g
+
+            #create formula to integrate accelerometer values(acceleration) to see if speed drops below a certain value
+            #integrate from t=x to t=x+10()
+            if acc[0] is not None:
+               velocity += (acc[0] * 9.8) * 10
+            if velocity > 0 and velocity < .4:        #if the velocity is less than certain value.
+               escape_time += 300
+
+            
+
          if(time.ticks_ms() >= escape_time):
             CHARGE_SPEED = 2500
             state = back_to

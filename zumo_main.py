@@ -26,7 +26,7 @@ display = robot.Display()
 
 # LEDs
 rgbs = robot.RGBLEDs()
-rgbs.set_brightness(3)
+rgbs.set_brightness(1)
 
 # Buttons
 button_a = robot.ButtonA()
@@ -37,11 +37,18 @@ black = 0
 
 # Proximity Sensors
 proximity_sensors = robot.ProximitySensors()
+
+# IMU 
+imu = robot.IMU()
+imu.reset()
+imu.enable_default()
+
    # ========== TRACKING CONSTANTS ==========
 SENSOR_THRESHOLD = const(1)
+MAX_SPEED = const(6000)
 TURN_SPEED_MAX = const(1800)
 TURN_SPEED_MIN = const(1500)
-CHARGE_SPEED = const(6000)
+CHARGE_SPEED = 2500
 DECELERATION = const(150)
 ACCELERATION = const(150)
 DIR_LEFT = const(0)
@@ -65,7 +72,7 @@ def show_NCSTATE():
    tuffy = display.load_pbm("zumo_display/tuffy.pbm")
    display.blit(tuffy, 0, 0)
 
-   for led in range(6):
+   for led in range(3):
       if (flip) == 0:
          rgbs.set(led,[255,0,0])
       else:
@@ -178,17 +185,20 @@ while True:
             tuffy = display.load_pbm("zumo_display/signal_received.pbm")
             display.blit(tuffy, 0, 0)
             display.show()
-            time.sleep_ms(1000)
+            #time.sleep_ms(1000)
    
    #Main fight code loop
    else:
       floor_scan()
-      proximity_scan()
+
+      if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
+         prev_time = time.ticks_ms()
+         proximity_scan()
       #code for proximity
       if state == "START":
          go = random.randint(1, 2)
          if go == 1:                      #speed blitz
-            motors.set_speeds(6000,6000)
+            motors.set_speeds(5500,5500)
          if go == 2:                      #question mark shape to get behind opponent 
             question_mark_kick()
          state = "ATTACK"
@@ -217,12 +227,14 @@ while True:
          
          if object_seen:
             # --- Object IS Seen ---
-            if abs(max(reading_left, reading_front_left) - max(reading_right, reading_front_right)) <= 2:
+            if abs(max(reading_left, reading_front_left) - max(reading_right, reading_front_right)) <= 1:
                # Object is centered, charge forward
                back_to = state
                state = "TIMER"
                escape_time = time.ticks_ms() + 300
                charge_forward()  # This will now run
+               rgbs.set(4, [255,255,255])
+               rgbs.show()
 
             elif max(reading_left, reading_front_left) > max(reading_right, reading_front_right):
                # Object is to the left, turn left
@@ -244,6 +256,8 @@ while True:
                turn_left() # This will now run
       # ==============================
       if state == "RECOVER":
+         rgbs.set(4, [0,0,0])
+         rgbs.show()
          if right_retreat_flag == 1:
             right_retreat_flag = 0
             right_recovery()
@@ -254,8 +268,23 @@ while True:
             state = "ATTACK"
 
       if state == "TIMER":
+         if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
+            if(CHARGE_SPEED < MAX_SPEED):
+               CHARGE_SPEED += 100
+               motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
+            
+            imu.read()
+            gyro = imu.gyro.last_reading_dps
+            if (gyro[1] is not None) and (gyro[1] > 5):
+               escape_time += 300
+
+            
+
          if(time.ticks_ms() >= escape_time):
+            CHARGE_SPEED = 2500
             state = back_to
+            rgbs.set(4, [0,0,0])
+            rgbs.show()
             
 # ===========================================================================================================================================================================================       
 # Centralized State-Based Machine Controller 
