@@ -274,17 +274,6 @@ while True:
             if(CHARGE_SPEED < MAX_SPEED):
                CHARGE_SPEED += 100
                motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
-            
-            
-            imu.read()
-            acc = imu.acc.last_reading_g
-
-            #create formula to integrate accelerometer values(acceleration) to see if speed drops below a certain value
-            #integrate from t=x to t=x+10()
-            if acc[0] is not None:
-               velocity += (acc[0] * 9.8) * 10
-            if velocity > 0 and velocity < .4:        #if the velocity is less than certain value.
-               escape_time += 300
 
             
 
