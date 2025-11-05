@@ -15,7 +15,7 @@ flag = 0
 left_retreat_flag , right_retreat_flag = 0, 0
 
 # Controller State Variable
-state = "START"
+state = "TEST"
 
 # Period Control
 prev_time = 0 
@@ -43,6 +43,9 @@ imu = robot.IMU()
 imu.reset()
 imu.enable_default()
 velocity = 0         #used for calculating speed
+acc_index = 0
+prev_acc_pull_time = 0
+acc_vals = [0,0,0,0,0]
 
    # ========== TRACKING CONSTANTS ==========
 SENSOR_THRESHOLD = const(1)
@@ -171,6 +174,26 @@ def stop():
 
 #ALL FUNCTIONS INVOLVING MOTORS
 
+#Functions involving IMU
+   #function to calculate speed of robot
+def find_speed():       #calculates speed of robot every 50ms
+   global acc_index
+   global prev_time
+   if(time.ticks_diff(time.ticks_ms(), prev_acc_pull_time) > 10):    #code stores accelerations in array of size 5 to be used later in calculation of velocity over 50ms period
+      imu.read()
+      acceleration = imu.acc.last_reading_g
+      if acceleration[0] is not None:
+         acc_vals[acc_index] = acceleration[0] * 9.8
+         acc_index += 1
+         if acc_index > 4:
+            acc_index = 0
+
+   if time.ticks_diff(time.ticks_ms(), prev_time) > 50:           #calculates velocity based on previously stored acc values
+      for x in acc_vals:
+         velocity += x
+      prev_time = time.ticks_ms()
+#Functions involving IMU
+
 #main code execution
 while True:
    #polling for button input/trigger
@@ -191,6 +214,8 @@ while True:
    #Main fight code loop
    else:
       floor_scan()
+      find_speed()
+
 
       if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
          prev_time = time.ticks_ms()
@@ -282,8 +307,11 @@ while True:
             state = back_to
             rgbs.set(4, [0,0,0])
             rgbs.show()
-            
-# ===========================================================================================================================================================================================       
+
+      if state == "TEST":
+         display.fill(0)
+         display.text(f"Velocity: {velocity:.2f}",0,0)
+# ==========================================================================================================================================================================================       
 # Centralized State-Based Machine Controller 
 # Version: 1
 #
