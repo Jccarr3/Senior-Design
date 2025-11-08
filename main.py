@@ -308,7 +308,7 @@ while True:
             rgbs.set(4, [0,0,0])
             rgbs.show()
 
-      if state == "TEST":
+      if state == "TEST":           #this state is used only for testing new code to be added
          display.fill(0)
          display.text(f"Velocity: {velocity:.2f}",0,0)
 # ==========================================================================================================================================================================================       
