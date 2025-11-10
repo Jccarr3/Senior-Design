@@ -129,9 +129,8 @@ while True:
       if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
          prev_time = time.ticks_ms()
          if button_a.is_pressed():
-            
-            # === BUG #1 FIX: Commented out blocking calibrate ===
-            # line_sensors.calibrate()                 
+        
+            line_sensors.calibrate()                 
             
             flag = 1
             state = "TRACK"
