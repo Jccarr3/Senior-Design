@@ -67,6 +67,11 @@ drive_motors = False # Motors are OFF by default
 
 # Motors
 motors = robot.Motors()
+
+
+
+# Testing variablies
+prev_time_test = 0
 # ==================================== #
 
 
@@ -179,18 +184,24 @@ def stop():
 def find_speed():       #calculates speed of robot every 50ms
    global acc_index
    global prev_time
+   global prev_acc_pull_time
+   global velocity
+
+   
    if(time.ticks_diff(time.ticks_ms(), prev_acc_pull_time) > 10):    #code stores accelerations in array of size 5 to be used later in calculation of velocity over 50ms period
       imu.read()
       acceleration = imu.acc.last_reading_g
+
       if acceleration[0] is not None:
          acc_vals[acc_index] = acceleration[0] * 9.8
          acc_index += 1
          if acc_index > 4:
             acc_index = 0
+      
 
    if time.ticks_diff(time.ticks_ms(), prev_time) > 50:           #calculates velocity based on previously stored acc values
       for x in acc_vals:
-         velocity += x
+         velocity += .01
       prev_time = time.ticks_ms()
 #Functions involving IMU
 
@@ -205,21 +216,21 @@ while True:
             black = line_sensors.read()[2]
 
             flag = 1
-            state = "START"                             #set initial fight state
-            tuffy = display.load_pbm("zumo_display/signal_received.pbm")
-            display.blit(tuffy, 0, 0)
-            display.show()
+            state = "TEST"                             #set initial fight state
+            # tuffy = display.load_pbm("zumo_display/signal_received.pbm")
+            # display.blit(tuffy, 0, 0)
+            # display.show()
             time.sleep_ms(1000)
    
    #Main fight code loop
    else:
-      floor_scan()
+      #floor_scan()
       find_speed()
 
 
-      if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
-         prev_time = time.ticks_ms()
-         proximity_scan()
+      # if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
+      #    prev_time = time.ticks_ms()
+      #    proximity_scan()
       #code for proximity
       if state == "START":
          go = random.randint(1, 2)
@@ -309,8 +320,13 @@ while True:
             rgbs.show()
 
       if state == "TEST":           #this state is used only for testing new code to be added
-         display.fill(0)
-         display.text(f"Velocity: {velocity:.2f}",0,0)
+         rgbs.set(4,[0,255,0])
+         rgbs.show()
+         if time.ticks_diff(time.ticks_ms(), prev_time_test) > 10:
+            prev_time_test = time.ticks_ms()
+            display.fill(0)
+            display.text(f"Velocity: {velocity:.2f}",0,0)
+            display.show()
 # ==========================================================================================================================================================================================       
 # Centralized State-Based Machine Controller 
 # Version: 1
