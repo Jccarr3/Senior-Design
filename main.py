@@ -279,7 +279,7 @@ while True:
                state = "TIMER"
                velocity = 0
                prev = 0
-               escape_time = time.ticks_ms() + 600
+               escape_time = time.ticks_ms() + 300
                charge_forward()  # This will now run
                rgbs.set(4, [255,255,255])
                rgbs.show()
@@ -316,9 +316,9 @@ while True:
             state = "ATTACK"
 
       if state == "TIMER":
-         prev_velocity = velocity
          find_speed()
          if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
+            prev_velocity = velocity
             display.fill(0)
             display.text(f"Velocity: {velocity:.2f}",0,0)
             display.show()
@@ -326,8 +326,11 @@ while True:
                CHARGE_SPEED += 100
                motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
 
-
-         if(time.ticks_ms() >= escape_time and (velocity > (prev_velocity + 300))):
+         if velocity < (prev_velocity - 300):
+            contact = 1
+         else:
+            contact = 0
+         if(time.ticks_ms() >= escape_time and not contact):
             CHARGE_SPEED = 2500
             state = back_to
             rgbs.set(4, [0,0,0])
