@@ -72,6 +72,7 @@ motors = robot.Motors()
 
 # Testing variablies
 prev_time_test = 0
+test_count = 0
 # ==================================== #
 
 
@@ -193,15 +194,22 @@ def find_speed():       #calculates speed of robot every 50ms
       acceleration = imu.acc.last_reading_g
 
       if acceleration[0] is not None:
-         acc_vals[acc_index] = acceleration[0] * 9.8
+         if -.02 < acceleration[0] < .02:
+            acc_vals[acc_index] = 0
+         else:
+            acc_vals[acc_index] = acceleration[0] * 9.8
          acc_index += 1
          if acc_index > 4:
             acc_index = 0
       
 
    if time.ticks_diff(time.ticks_ms(), prev_time) > 50:           #calculates velocity based on previously stored acc values
-      for x in acc_vals:
-         velocity += .01
+      avg_acc = sum(acc_vals) / len(acc_vals)
+      velocity += avg_acc 
+
+      if velocity < .01:
+         velocity = 0
+    
       prev_time = time.ticks_ms()
 #Functions involving IMU
 
@@ -216,10 +224,10 @@ while True:
             black = line_sensors.read()[2]
 
             flag = 1
-            state = "TEST"                             #set initial fight state
-            # tuffy = display.load_pbm("zumo_display/signal_received.pbm")
-            # display.blit(tuffy, 0, 0)
-            # display.show()
+            state = "START"                             #set initial fight state
+            tuffy = display.load_pbm("zumo_display/signal_received.pbm")
+            display.blit(tuffy, 0, 0)
+            display.show()
             time.sleep_ms(1000)
    
    #Main fight code loop
@@ -268,8 +276,9 @@ while True:
                # Object is centered, charge forward
                back_to = state
                state = "TIMER"
+               velocity = 0
                prev = 0
-               escape_time = time.ticks_ms() + 300
+               escape_time = time.ticks_ms() + 600
                charge_forward()  # This will now run
                rgbs.set(4, [255,255,255])
                rgbs.show()
@@ -307,13 +316,15 @@ while True:
 
       if state == "TIMER":
          if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
+            display.fill(0)
+            display.text(f"Velocity: {velocity:.2f}",0,0)
+            display.show()
             if(CHARGE_SPEED < MAX_SPEED):
                CHARGE_SPEED += 100
                motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
 
-            
 
-         if(time.ticks_ms() >= escape_time):
+         if(time.ticks_ms() >= escape_time and velocity > 4):
             CHARGE_SPEED = 2500
             state = back_to
             rgbs.set(4, [0,0,0])
@@ -324,9 +335,15 @@ while True:
          rgbs.show()
          if time.ticks_diff(time.ticks_ms(), prev_time_test) > 10:
             prev_time_test = time.ticks_ms()
+            test_count += 1
             display.fill(0)
             display.text(f"Velocity: {velocity:.2f}",0,0)
             display.show()
+
+         if test_count > 150:
+            motors.set_speeds(3000,3000)
+
+
 # ==========================================================================================================================================================================================       
 # Centralized State-Based Machine Controller 
 # Version: 1
