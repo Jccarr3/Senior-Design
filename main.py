@@ -236,9 +236,6 @@ while True:
    #Main fight code loop
    else:
       floor_scan()
-      find_speed()
-
-
       if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
          prev_time = time.ticks_ms()
          proximity_scan()
@@ -319,8 +316,9 @@ while True:
             state = "ATTACK"
 
       if state == "TIMER":
+         prev_velocity = velocity
+         find_speed()
          if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
-            prev_velocity = velocity
             display.fill(0)
             display.text(f"Velocity: {velocity:.2f}",0,0)
             display.show()
@@ -346,7 +344,11 @@ while True:
             display.show()
 
          if test_count > 15:
-            motors.set_speeds(3000,3000)
+            if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
+               prev_velocity = velocity
+               if(CHARGE_SPEED < MAX_SPEED):
+                  CHARGE_SPEED += 100
+                  motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
 
 
 # ==========================================================================================================================================================================================       
