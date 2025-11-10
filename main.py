@@ -44,8 +44,11 @@ imu.reset()
 imu.enable_default()
 velocity = 0         #used for calculating speed
 acc_index = 0
-prev_acc_pull_time = 0
-acc_vals = [0,0,0,0,0]
+prev_acc_pull_count = 0
+prev_speed_time = 0
+INDEX_SIZE = const(50)
+acc_vals = [0] * INDEX_SIZE
+prev_velocity = 0
 
    # ========== TRACKING CONSTANTS ==========
 SENSOR_THRESHOLD = const(1)
@@ -184,33 +187,33 @@ def stop():
    #function to calculate speed of robot
 def find_speed():       #calculates speed of robot every 50ms
    global acc_index
-   global prev_time
-   global prev_acc_pull_time
+   global acc_vals
+   global prev_speed_time
+   global prev_acc_pull_count
    global velocity
 
    
-   if(time.ticks_diff(time.ticks_ms(), prev_acc_pull_time) > 10):    #code stores accelerations in array of size 5 to be used later in calculation of velocity over 50ms period
-      imu.read()
-      acceleration = imu.acc.last_reading_g
+   imu.read()
+   acceleration = imu.acc.last_reading_g
 
-      if acceleration[0] is not None:
-         if -.02 < acceleration[0] < .02:
-            acc_vals[acc_index] = 0
-         else:
-            acc_vals[acc_index] = acceleration[0] * 9.8
-         acc_index += 1
-         if acc_index > 4:
-            acc_index = 0
+   if acceleration[0] is not None:
+      if abs(acceleration[0]) > .2:
+         acc_vals[acc_index] = acceleration[0]
+      else:
+         acc_vals[acc_index] = 0
       
+      acc_index += 1
 
-   if time.ticks_diff(time.ticks_ms(), prev_time) > 50:           #calculates velocity based on previously stored acc values
-      avg_acc = sum(acc_vals) / len(acc_vals)
-      velocity += avg_acc 
+   if acc_index == INDEX_SIZE:
+      acc_index = 0
+      avg_acc = sum(acc_vals) / INDEX_SIZE
+      dt = time.ticks_diff(time.ticks_ms(),prev_speed_time)
+      velocity += avg_acc * dt
 
-      if velocity < .01:
-         velocity = 0
-    
-      prev_time = time.ticks_ms()
+
+
+
+      
 #Functions involving IMU
 
 #main code execution
@@ -232,13 +235,14 @@ while True:
    
    #Main fight code loop
    else:
-      #floor_scan()
+      floor_scan()
       find_speed()
 
 
-      # if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
-      #    prev_time = time.ticks_ms()
-      #    proximity_scan()
+      if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
+         prev_time = time.ticks_ms()
+         proximity_scan()
+
       #code for proximity
       if state == "START":
          go = random.randint(1, 2)
@@ -316,6 +320,7 @@ while True:
 
       if state == "TIMER":
          if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
+            prev_velocity = velocity
             display.fill(0)
             display.text(f"Velocity: {velocity:.2f}",0,0)
             display.show()
@@ -324,7 +329,7 @@ while True:
                motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
 
 
-         if(time.ticks_ms() >= escape_time and velocity > 4):
+         if(time.ticks_ms() >= escape_time and (velocity > (prev_velocity + 300))):
             CHARGE_SPEED = 2500
             state = back_to
             rgbs.set(4, [0,0,0])
@@ -333,14 +338,14 @@ while True:
       if state == "TEST":           #this state is used only for testing new code to be added
          rgbs.set(4,[0,255,0])
          rgbs.show()
-         if time.ticks_diff(time.ticks_ms(), prev_time_test) > 10:
+         if time.ticks_diff(time.ticks_ms(), prev_time_test) > 100:
             prev_time_test = time.ticks_ms()
             test_count += 1
             display.fill(0)
             display.text(f"Velocity: {velocity:.2f}",0,0)
             display.show()
 
-         if test_count > 150:
+         if test_count > 15:
             motors.set_speeds(3000,3000)
 
 
