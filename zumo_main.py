@@ -272,11 +272,6 @@ while True:
             if(CHARGE_SPEED < MAX_SPEED):
                CHARGE_SPEED += 100
                motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
-            
-            imu.read()
-            gyro = imu.gyro.last_reading_dps
-            if (gyro[1] is not None) and (gyro[1] > 5):
-               escape_time += 300
 
             
 

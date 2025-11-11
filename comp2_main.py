@@ -62,7 +62,11 @@ DECELERATION = const(150)
 ACCELERATION = const(150)
 DIR_LEFT = const(0)
 DIR_RIGHT = const(1)
+
 PRELIMINARY_CHARGE_DURATION_MS = const(300)
+
+ACCL_BUFFER_SIZE = const(10)
+DECELERATION_THRESHOLD = const(-80)
 # ==================================== #
 
 # ========== TRACKING STATE VARIABLES ==========
@@ -140,58 +144,58 @@ def proximity_scan():
 #ALL FUNCTIONS INVOLVING MOTORS
    #right recovery function(used for recovering from edge detection)
 def right_recovery():
-   motors.set_speeds(-1*5800,-1*1800)
+   motor_control(-1*5800,-1*1800)
    time.sleep_ms(750)
-   motors.off()
+   motor_control(0, 0)
    #right recovery function(used for recovering from edge detection)
 
    #left recovery function(used for recovering from edge detection)
 def left_recovery():
-   motors.set_speeds(-1*1800,-1*5800)
+   motor_control(-1*1800,-1*5800)
    time.sleep_ms(750)
-   motors.off()
+   motor_control(0, 0)
    #left recovery function(used for recovering from edge detection)
 
    #Question mark shape(used as a startup option to get behind opponent)
 def question_mark_kick():
-   motors.set_speeds(-1*1800,-1*5800)
+   motor_control(-1*1800,-1*5800)
    time.sleep_ms(1100)
-   motors.set_speeds(-1*5800,-1*1800)
+   motor_control(-1*5800,-1*1800)
    time.sleep_ms(500)
-   motors.off()
+   motor_control(0, 0)
    #Question mark shape(used as a startup option to get behind opponent
 
    #Inverse question mark
 def inv_question_mark_kick():
-   motors.set_speeds(-1*5800, -1*1800)
+   motor_control(-1*5800, -1*1800)
    time.sleep_ms(1100)
-   motors.set_speeds(-1*1800, -1*5800)
+   motor_control(-1*1800, -1*5800)
    time.sleep_ms(500)
-   motors.off()
+   motor_control(0, 0)
    #Inverse question mark
 
    # ========== TRACKING HELPER FUNCTIONS ==========
 def turn_right():
     global turning_left, turning_right
-    motors.set_speeds(turn_speed, -turn_speed)
+    motor_control(turn_speed, -turn_speed)
     turning_left = False
     turning_right = True
 
 def turn_left():
     global turning_left, turning_right
-    motors.set_speeds(-turn_speed, turn_speed)
+    motor_control(-turn_speed, turn_speed)
     turning_left = True
     turning_right = False
 
 def charge_forward():
     global turning_left, turning_right
-    motors.set_speeds(CHARGE_SPEED, CHARGE_SPEED)
+    motor_control(CHARGE_SPEED, CHARGE_SPEED)
     turning_left = False
     turning_right = False
 
 def stop():
     global turning_left, turning_right
-    motors.set_speeds(0, 0)
+    motor_control(0, 0)
     turning_left = False
     turning_right = False
    # ==============================   
@@ -210,7 +214,7 @@ def find_speed():       #calculates speed of robot every 50ms
 
    
    imu.read()
-   acceleration = imu.acc.last_reading_g
+   acceleration = imu.gyro.last_reading_dps
 
    if acceleration[0] is not None:
       if abs(acceleration[0]) > .2:
@@ -230,9 +234,16 @@ def find_speed():       #calculates speed of robot every 50ms
          velocity = 0
 
 # ========== GLOBAL VARIABLES ==========
-# Global Motor Variables
+# Motor Variables
 current_left_speed = 0
 current_right_speed = 0
+
+# IMU Variables
+accl_buffer = [0] * ACCL_BUFFER_SIZE
+accl_index = 0
+
+# State Machine Variables
+detection_duration = 0
 # ====================================== #
 
 # ========== MOTOR CONTROL FUNCTION ==========
@@ -310,7 +321,7 @@ while True:
       if state == "START":
          go = random.randint(1, 3)
          if go == 1:                      #speed blitz
-            motors.set_speeds(5500,5500)
+            motor_control(5500,5500)
          if go == 2:                      #question mark shape to get behind opponent 
             question_mark_kick()
          if go == 3:                      #inverse question mark shape to get behind opponent
@@ -354,27 +365,31 @@ while True:
                # Option 2: Detection State - Similar to the TIMER state, but monitors the IMU for contact with the opponent during the preliminary charge. This option is designed to enhance
                # opponent lock-on as Option 1 inefficiently exits and re-enters the SCAN state after the limited-duration charge.
                # Transition to a detection state that monitors for contact via the IMU during a preliminary (non-corrective, limited-duration) charge
-               # state = "DETECTION"
-               # detection_duration = time.ticks_ms() + PRELIMINARY_CHARGE_DURATION_MS
+               state = "DETECTION"
+               detection_duration = time.ticks_ms() + PRELIMINARY_CHARGE_DURATION_MS
 
                pass
 
             elif max(reading_left, reading_front_left) > max(reading_right, reading_front_right):
                # motor_control(-turn_speed, turn_speed) - This is a placeholder for the actual motor API call.
+               motor_control(-turn_speed, turn_speed)
                sense_dir = DIR_LEFT
 
             elif max(reading_left, reading_front_left) < max(reading_right, reading_front_right):
                # motor_control(turn_speed, -turn_speed) - This is a placeholder for the actual motor API call.
+               motor_control(turn_speed, -turn_speed)
                sense_dir = DIR_RIGHT
          else:
             # If an object is not seen, continue turning in the last known direction of the target.
             if sense_dir == DIR_RIGHT:
                # motor_control(turn_speed, -turn_speed) - This is a placeholder for the actual motor API call.
+               motor_control(turn_speed, -turn_speed)
 
                pass
 
             elif sense_dir == DIR_LEFT:
                # motor_control(-turn_speed, turn_speed) - This is a placeholder for the actual motor API call.
+               motor_control(-turn_speed, turn_speed)
 
                pass
       
@@ -382,9 +397,39 @@ while True:
          # Monitor the IMU for contact with the opponent during the preliminary charge. This is determined by a sudden deceleration as read by the IMU.
 
          # Add the current acceleration reading to a buffer and compute the average acceleration when the buffer is full. If the average acceleration exceeds a defined threshold, 
-         # transition to the ATTACK state. Note, if the detection duration expires without contact, return to the SCAN state. An interesting idea could be to modularize the timer
-         # via a helper function situated in the round-robin loop and togglable via an enable flag. This would allos for non-blocking timers to be used throughout the code without 
-         # excessive repetition. This may require an idle state
+         # transition to the ATTACK state. Note, if the detection duration expires without contact, return to the SCAN state.
+
+         # accl_buffer[accl_index] = IMU.accelerometer
+         # accl_index++
+         #
+         # if (accl_index >= accl_buffer_size) {
+         #      avg_accl = avg(accl_buffer)
+         #
+         #      if avg_accl <= decel_threshold {
+         #          state = "ATTACK"  
+         #      }
+         #     
+         #      accl_index = 0
+         # }
+         # else if (time.ticks_ms() >= detection_duration) {
+         #      state = "SCAN"
+         # }
+
+         imu.read()
+         acceleration = imu.gyro.last_reading_dps
+         
+         if acceleration[2] is not None:
+            accl_buffer[accl_index] = acceleration[2]
+            accl_index += 1
+         
+         if accl_index >= ACCL_BUFFER_SIZE:
+            avg_accl = sum(accl_buffer) / ACCL_BUFFER_SIZE
+
+            if avg_accl <= DECELERATION_THRESHOLD:
+               state = "ATTACK"
+
+            accl_index = 0
+         elif time.ticks_ms > detection_duratdetectionion:
          pass
       
       if state == "ATTACK":

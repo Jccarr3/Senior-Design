@@ -27,6 +27,8 @@ display = robot.Display()
 # LEDs
 rgbs = robot.RGBLEDs()
 rgbs.set_brightness(1)
+led_toggle = False
+led_time = 0
 
 # Buttons
 button_a = robot.ButtonA()
@@ -42,16 +44,10 @@ proximity_sensors = robot.ProximitySensors()
 imu = robot.IMU()
 imu.reset()
 imu.enable_default()
-velocity = 0         #used for calculating speed
-acc_index = 0
-prev_acc_pull_count = 0
-prev_speed_time = 0
-INDEX_SIZE = const(50)
-acc_vals = [0] * INDEX_SIZE
-prev_velocity = 0
-contact = 0
-# ==================================== #
 avg_acc = 0
+contact = 0
+acc_counter = 0
+# ==================================== #
 
 # ========== TRACKING CONSTANTS ==========
 SENSOR_THRESHOLD = const(1)
@@ -201,44 +197,31 @@ def stop():
 #Functions involving IMU
    #function to calculate speed of robot
 def find_speed():       #calculates speed of robot every 50ms
-   global acc_index
-   global acc_vals
-   global prev_speed_time
-   global prev_acc_pull_count
-   global velocity
-   global prev_velocity
    global avg_acc
-
-   
    imu.read()
-   acceleration = imu.acc.last_reading_g
+   acceleration = imu.gyro.last_reading_dps
 
-   if acceleration[0] is not None:
-      if abs(acceleration[0]) > .2:
-         acc_vals[acc_index] = acceleration[0]
-      else:
-         acc_vals[acc_index] = 0
+   if acceleration[2] is not None:
+      avg_acc = acceleration[2]
+
       
-      acc_index += 1
-
-   if acc_index == INDEX_SIZE:
-      acc_index = 0
-      avg_acc = sum(acc_vals) / INDEX_SIZE * 9.8
-      # dt = time.ticks_diff(time.ticks_ms(),prev_speed_time) / 1000
-      # prev_speed_time = time.ticks_ms()
-      # velocity += avg_acc * dt
-      # if velocity < 0:
-      #    velocity = 0
-
-
-
-
 
       
 #Functions involving IMU
 
 #main code execution
 while True:
+   if time.ticks_diff(time.ticks_ms(), led_time) > 1000:
+      led_time = time.ticks_ms()
+      led_toggle = not led_toggle
+      if led_toggle:
+         rgbs.set(3,[255,0,0])
+         rgbs.set(5,[255,0,0])
+      else:
+         rgbs.set(3,[0,0,0])
+         rgbs.set(5,[0,0,0])
+      rgbs.show()
+
    #polling for button input/trigger
    if flag == 0:
       if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
@@ -300,9 +283,10 @@ while True:
                # Object is centered, charge forward
                back_to = state
                state = "TIMER"
+               avg_acc = 0
+               acc_counter = 0
                contact = 0
-               prev = 0
-               escape_time = time.ticks_ms() + 500
+               escape_time = time.ticks_ms() + 300
                charge_forward()  # This will now run
                rgbs.set(4, [255,255,255])
                rgbs.show()
@@ -339,32 +323,49 @@ while True:
             state = "ATTACK"
 
       if state == "TIMER":
-         find_speed()
-         if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
+         if acc_counter > 5:           #only start reading IMU values after robot has started moving forward(done to avoid reading useless values that could mislead the robot)
+            find_speed()
+         if time.ticks_diff(time.ticks_ms(), prev_time) > 10:     #every 10ms ramp up motor speed, increase counter used for IMU delay
+            acc_counter += 1
             if(CHARGE_SPEED < MAX_SPEED):
                CHARGE_SPEED += 100
                motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
          
-         if avg_acc < 0:
-            contact = 1
+         if avg_acc < -80:                #if contact was detected, set contact variable high
+            state = "TRACTION" 
+            rgbs.set(4, [0,0,255])
+            rgbs.show()
          
          
-         if(time.ticks_ms() >= escape_time and (contact == 0)):
+         if(time.ticks_ms() >= escape_time and (contact == 0)):         #break out of timer state if we hit the escape time and no contact was made
             CHARGE_SPEED = 2500
             state = back_to
             rgbs.set(4, [0,0,0])
             rgbs.show()
 
+      if state == "TRACTION":
+         if time.ticks_diff(time.ticks_ms(), prev_time) > 10:     #every 10ms ramp up motor speed, increase counter used for IMU delay
+            if(CHARGE_SPEED < MAX_SPEED):
+               CHARGE_SPEED += 100
+               motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
+            else:
+               CHARGE_SPEED = 2500
+               time.sleep_ms(100)
+
       if state == "TEST":           #this state is used only for testing new code to be added
          find_speed()
+         if avg_acc < -60:
+            contact = 1
+            display.fill(0)
+            display.text(f"Acc: {avg_acc:.2f}",0,0)
+            display.show()
+            time.sleep_ms(5000)
+
          rgbs.set(4,[0,255,0])
          rgbs.show()
          if time.ticks_diff(time.ticks_ms(), prev_time_test) > 100:
             prev_time_test = time.ticks_ms()
             test_count += 1
-            display.fill(0)
-            display.text(f"Velocity: {velocity:.2f}",0,0)
-            display.show()
 
          if test_count > 15:
             if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
@@ -372,7 +373,8 @@ while True:
                   CHARGE_SPEED += 100
                   motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
 
-               if velocity < (prev_velocity):
+
+               if contact == 1:
                   rgbs.set(3,[0,255,0])
                   rgbs.show()
 
