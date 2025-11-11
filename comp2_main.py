@@ -3,6 +3,7 @@ from zumo_2040_robot import robot
 import time
 from machine import Pin
 import random
+from micropython import const
 # ==================================== #
 
 # Start Trigger GPIO Pin
@@ -57,7 +58,7 @@ SENSOR_THRESHOLD = const(1)
 MAX_SPEED = const(6000)
 TURN_SPEED_MAX = const(1800)
 TURN_SPEED_MIN = const(1500)
-CHARGE_SPEED = 2500
+CHARGE_SPEED = 6000
 DECELERATION = const(150)
 ACCELERATION = const(150)
 DIR_LEFT = const(0)
@@ -67,6 +68,7 @@ PRELIMINARY_CHARGE_DURATION_MS = const(300)
 
 ACCL_BUFFER_SIZE = const(10)
 DECELERATION_THRESHOLD = const(-80)
+ACCELERATION_THRESHOLD = const(80)
 # ==================================== #
 
 # ========== TRACKING STATE VARIABLES ==========
@@ -239,11 +241,15 @@ current_left_speed = 0
 current_right_speed = 0
 
 # IMU Variables
+decel_buffer = [0] * ACCL_BUFFER_SIZE
+decel_index = 0
 accl_buffer = [0] * ACCL_BUFFER_SIZE
 accl_index = 0
 
 # State Machine Variables
 detection_duration = 0
+attack_exit_condition1 = False
+attack_exit_condition2 = False
 # ====================================== #
 
 # ========== MOTOR CONTROL FUNCTION ==========
@@ -263,6 +269,10 @@ def motor_control(target_left_speed, target_right_speed):
    RAMP_UP_INTERVAL_MS = 50     # Time interval between ramp-up steps
 
    last_ramp_time = time.ticks_ms() - RAMP_UP_INTERVAL_MS  # Initialize the last ramp-up time variable to allow immediate ramp-up.
+
+   # Clip the target speeds to the maximum allowable speed.
+   target_left_speed = max(-MAX_SPEED, min(MAX_SPEED, target_left_speed))
+   target_right_speed = max(-MAX_SPEED, min(MAX_SPEED, target_right_speed))
 
    while (current_left_speed != target_left_speed) or (current_right_speed != target_right_speed):
 
@@ -354,6 +364,7 @@ while True:
             if abs(max(reading_left, reading_front_left) - max(reading_right, reading_front_right)) <= 1:
                # Make a call to the motor API to charge forward. The API has built-in ramp-up functionality to prevent a brownout condition.
                # motor_control(CHARGE_SPEED, CHARGE_SPEED) - This is a placeholder for the actual motor API call.
+               motor_control(CHARGE_SPEED, CHARGE_SPEED)
 
                # Option 1: Use a non-blocking timer to allow for limited-duration charge while maintaining white line detection. This was the option used during Competition One.
                # DO NOT USE THE TIMER.SLEEP_MS() FUNCTION FOR NON-CORRECTIVE, LIMITED-DURATION CHARGES. THIS WILL BLOCK THE WHITE LINE DETECTION.
@@ -419,18 +430,18 @@ while True:
          acceleration = imu.gyro.last_reading_dps
          
          if acceleration[2] is not None:
-            accl_buffer[accl_index] = acceleration[2]
-            accl_index += 1
+            decel_buffer[decel_index] = acceleration[2]
+            decel_index += 1
          
-         if accl_index >= ACCL_BUFFER_SIZE:
-            avg_accl = sum(accl_buffer) / ACCL_BUFFER_SIZE
+         if decel_index >= ACCL_BUFFER_SIZE:
+            avg_decel = sum(decel_buffer) / ACCL_BUFFER_SIZE
 
-            if avg_accl <= DECELERATION_THRESHOLD:
+            if avg_decel <= DECELERATION_THRESHOLD:
                state = "ATTACK"
 
-            accl_index = 0
-         elif time.ticks_ms > detection_duratdetectionion:
-         pass
+            decel_index = 0
+         elif time.ticks_diff(time.ticks_ms(), detection_duration) >= PRELIMINARY_CHARGE_DURATION_MS:
+            state = "SCAN"
       
       if state == "ATTACK":
          # This is a high-confidence, high-speed charge towards the opponent. The robot should maintain this state until a white line is detected or the opponent is lost. A controller will
@@ -441,8 +452,64 @@ while True:
             # target), return to the SCAN state. This allows for the controller to take advantage of the recent history of the proximity sensors to try and maintain lock-on. 
             # Option 2: Single-Condition Target Loss - If all sensors have lost the opponent, return to the SCAN state. This is a more aggressive exit condition that may result in faster
             # reacquisition of the opponent, but may also result in premature exit from the ATTACK state.
+         # For now we will implement Option 1.
+         proximity_sensors.read()
+         reading_left = proximity_sensors.left_counts_with_left_leds()
+         reading_front_left = proximity_sensors.front_counts_with_left_leds()
+         reading_front_right = proximity_sensors.front_counts_with_right_leds()
+         reading_right = proximity_sensors.right_counts_with_right_leds()
 
-         pass
+         object_seen = any(reading > SENSOR_THRESHOLD for reading in \
+            (reading_left, reading_front_left, reading_front_right, reading_right))
+         
+         # Constantly average the acceleration readings to monitor for sudden acceleration indicating loss of contact.
+         imu.read()
+         acceleration = imu.gyro.last_reading_dps
+
+         if acceleration[2] is not None:
+            accl_buffer[accl_index] = acceleration[2]
+            accl_index += 1
+         
+         if accl_index >= ACCL_BUFFER_SIZE:
+            avg_accl = sum(accl_buffer) / ACCL_BUFFER_SIZE
+            accl_index = 0
+
+            if avg_accl >= ACCELERATION_THRESHOLD:
+               # One of the exit conditions has been met, check for the second condition if using Option 1.
+               attack_exit_condition1 = True
+            else:
+               attack_exit_condition1 = False
+
+         
+         if object_seen:
+            # Reset exit condition flag since the target is still seen.
+            attack_exit_condition2 = False
+
+            # Adjust motor speeds based on proximity sensor readings to maintain lock-on.
+            left_adjustment = (reading_left + reading_front_left) // 2
+            right_adjustment = (reading_right + reading_front_right) // 2
+
+            base_speed = CHARGE_SPEED
+            left_speed = base_speed + right_adjustment - left_adjustment # If the left sensors read higher, decrease left motor speed to turn the robot left to realign on the target.
+            right_speed = base_speed + left_adjustment - right_adjustment # If the right sensors read higher, decrease right motor speed to turn the robot right to realign on the target.
+            
+            # Add a robustness check to prevent negative motor speeds.
+            left_speed = max(0, left_speed)
+            right_speed = max(0, right_speed)
+
+            # Constrain the speeds to maximum allowable speed.
+            left_speed = min(left_speed, MAX_SPEED)
+            right_speed = min(right_speed, MAX_SPEED)
+
+            motor_control(left_speed, right_speed)
+         else:
+            # The target is lost, set the exit condition flag.
+            attack_exit_condition2 = True
+
+         if attack_exit_condition1 and attack_exit_condition2:
+            state = "SCAN"
+            attack_exit_condition1 = False
+            attack_exit_condition2 = False
       
       if state == "RECOVER":
          rgbs.set(4, [0,0,0])
