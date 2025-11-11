@@ -301,14 +301,17 @@ while True:
                # Option 1: Use a non-blocking timer to allow for limited-duration charge while maintaining white line detection. This was the option used during Competition One.
                # DO NOT USE THE TIMER.SLEEP_MS() FUNCTION FOR NON-CORRECTIVE, LIMITED-DURATION CHARGES. THIS WILL BLOCK THE WHITE LINE DETECTION.
                # Transition to the TIMER state to allow for a non-corrective, non-blocking, limited-duration charge. 
-               back_to = state
-               state = "TIMER"
-               escape_time = time.ticks_ms() + PRELIMINARY_CHARGE_DURATION_MS
+               # back_to = state
+               # state = "TIMER"
+               # escape_time = time.ticks_ms() + PRELIMINARY_CHARGE_DURATION_MS
 
                # Option 2: Detection State - Similar to the TIMER state, but monitors the IMU for contact with the opponent during the preliminary charge. This option is designed to enhance
                # opponent lock-on as Option 1 inefficiently exits and re-enters the SCAN state after the limited-duration charge.
                # Transition to a detection state that monitors for contact via the IMU during a preliminary (non-corrective, limited-duration) charge
                # state = "DETECTION"
+               # detection_duration = time.ticks_ms() + PRELIMINARY_CHARGE_DURATION_MS
+
+               pass
 
             elif max(reading_left, reading_front_left) > max(reading_right, reading_front_right):
                # motor_control(-turn_speed, turn_speed) - This is a placeholder for the actual motor API call.
@@ -321,18 +324,27 @@ while True:
             # If an object is not seen, continue turning in the last known direction of the target.
             if sense_dir == DIR_RIGHT:
                # motor_control(turn_speed, -turn_speed) - This is a placeholder for the actual motor API call.
-               pass # This will now run
+
+               pass
 
             elif sense_dir == DIR_LEFT:
                # motor_control(-turn_speed, turn_speed) - This is a placeholder for the actual motor API call.
-               pass # This will now run
+
+               pass
       
       if state == "DETECTION":
          # Monitor the IMU for contact with the opponent during the preliminary charge. This is determined by a sudden deceleration as read by the IMU.
+
+         # Add the current acceleration reading to a buffer and compute the average acceleration when the buffer is full. If the average acceleration exceeds a defined threshold, 
+         # transition to the ATTACK state. Note, if the detection duration expires without contact, return to the SCAN state. An interesting idea could be to modularize the timer
+         # via a helper function situated in the round-robin loop and togglable via an enable flag. This would allos for non-blocking timers to be used throughout the code without 
+         # excessive repetition. This may require an idle state
          pass
       
       if state == "ATTACK":
-         # Transition to the attack state if a preliminary charge results in contact with the opponet. This is determined by a sudden deceleration as read by the IMU.
+         # This is a high-confidence, high-speed charge towards the opponent. The robot should maintain this state until a white line is detected or the opponent is lost. A controller will
+         # be implemented to maintain opponent lock-on via the proximity sensors during the charge. Use the
+
          pass
       
       if state == "RECOVER":
@@ -348,27 +360,29 @@ while True:
             state = "ATTACK"
 
       if state == "TIMER":
-         find_speed()
-         if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
-            contact += 1
-            if contact == 5:
-               prev_velocity = velocity
-            display.fill(0)
-            display.text(f"Velocity: {velocity:.2f}",0,0)
-            display.text(f"Prev: {prev_velocity:.2f}",0,10)
-            display.show()
-            if(CHARGE_SPEED < MAX_SPEED):
-               CHARGE_SPEED += 100
-               motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
+        #  find_speed()
+        #  if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
+        #     contact += 1
+        #     if contact == 5:
+        #        prev_velocity = velocity
+        #     display.fill(0)
+        #     display.text(f"Velocity: {velocity:.2f}",0,0)
+        #     display.text(f"Prev: {prev_velocity:.2f}",0,10)
+        #     display.show()
+        #     if(CHARGE_SPEED < MAX_SPEED):
+        #        CHARGE_SPEED += 100
+        #        motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
 
          
-         if(time.ticks_ms() >= escape_time and (velocity > prev_velocity)):
-            velocity = 0
-            prev_velocity = 0
-            CHARGE_SPEED = 2500
-            state = back_to
-            rgbs.set(4, [0,0,0])
-            rgbs.show()
+        #  if(time.ticks_ms() >= escape_time and (velocity > prev_velocity)):
+        #     velocity = 0
+        #     prev_velocity = 0
+        #     CHARGE_SPEED = 2500
+        #     state = back_to
+        #     rgbs.set(4, [0,0,0])
+        #     rgbs.show()
+
+            pass
 
       if state == "TEST":           #this state is used only for testing new code to be added
          find_speed()
