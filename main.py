@@ -49,6 +49,7 @@ prev_speed_time = 0
 INDEX_SIZE = const(50)
 acc_vals = [0] * INDEX_SIZE
 prev_velocity = 0
+contact = 0
 
    # ========== TRACKING CONSTANTS ==========
 SENSOR_THRESHOLD = const(1)
@@ -155,6 +156,15 @@ def question_mark_kick():
    motors.off()
    #Question mark shape(used as a startup option to get behind opponent
 
+   #Inverse question mark
+def inv_question_mark_kick():
+   motors.set_speeds(-1*5800, -1*1800)
+   time.sleep_ms(1100)
+   motors.set_speeds(-1*1800, -1*5800)
+   time.sleep_ms(500)
+   motors.off()
+   #Inverse question mark
+
    # ========== TRACKING HELPER FUNCTIONS ==========
 def turn_right():
     global turning_left, turning_right
@@ -191,6 +201,7 @@ def find_speed():       #calculates speed of robot every 50ms
    global prev_speed_time
    global prev_acc_pull_count
    global velocity
+   global prev_velocity
 
    
    imu.read()
@@ -206,9 +217,13 @@ def find_speed():       #calculates speed of robot every 50ms
 
    if acc_index == INDEX_SIZE:
       acc_index = 0
-      avg_acc = sum(acc_vals) / INDEX_SIZE
-      dt = time.ticks_diff(time.ticks_ms(),prev_speed_time)
+      avg_acc = sum(acc_vals) / INDEX_SIZE * 9.8
+      dt = time.ticks_diff(time.ticks_ms(),prev_speed_time) / 1000
+      prev_speed_time = time.ticks_ms()
       velocity += avg_acc * dt
+      if velocity < 0:
+         velocity = 0
+
 
 
 
@@ -223,7 +238,7 @@ while True:
       if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
          prev_time = time.ticks_ms()
          if button_a.is_pressed():                       #check for start signal from button A
-            line_sensors.calibrate()                  #calibrate line sensors 
+            line_sensors.calibrate()                     #calibrate line sensors 
             black = line_sensors.read()[2]
 
             flag = 1
@@ -242,11 +257,13 @@ while True:
 
       #code for proximity
       if state == "START":
-         go = random.randint(1, 2)
+         go = random.randint(1, 3)
          if go == 1:                      #speed blitz
             motors.set_speeds(5500,5500)
          if go == 2:                      #question mark shape to get behind opponent 
             question_mark_kick()
+         if go == 3:                      #inverse question mark shape to get behind opponent
+            inv_question_mark_kick()
          state = "ATTACK"
       if state == "ATTACK":
          proximity_sensors.read()
@@ -277,9 +294,9 @@ while True:
                # Object is centered, charge forward
                back_to = state
                state = "TIMER"
-               velocity = 0
+               contact = 0
                prev = 0
-               escape_time = time.ticks_ms() + 300
+               escape_time = time.ticks_ms() + 500
                charge_forward()  # This will now run
                rgbs.set(4, [255,255,255])
                rgbs.show()
@@ -318,25 +335,28 @@ while True:
       if state == "TIMER":
          find_speed()
          if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
-            prev_velocity = velocity
+            contact += 1
+            if contact == 5:
+               prev_velocity = velocity
             display.fill(0)
             display.text(f"Velocity: {velocity:.2f}",0,0)
+            display.text(f"Prev: {prev_velocity:.2f}",0,10)
             display.show()
             if(CHARGE_SPEED < MAX_SPEED):
                CHARGE_SPEED += 100
                motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
 
-         if velocity < (prev_velocity - 300):
-            contact = 1
-         else:
-            contact = 0
-         if(time.ticks_ms() >= escape_time and not contact):
+         
+         if(time.ticks_ms() >= escape_time and (velocity > prev_velocity)):
+            velocity = 0
+            prev_velocity = 0
             CHARGE_SPEED = 2500
             state = back_to
             rgbs.set(4, [0,0,0])
             rgbs.show()
 
       if state == "TEST":           #this state is used only for testing new code to be added
+         find_speed()
          rgbs.set(4,[0,255,0])
          rgbs.show()
          if time.ticks_diff(time.ticks_ms(), prev_time_test) > 100:
@@ -348,10 +368,13 @@ while True:
 
          if test_count > 15:
             if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
-               prev_velocity = velocity
                if(CHARGE_SPEED < MAX_SPEED):
                   CHARGE_SPEED += 100
                   motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
+
+               if velocity < (prev_velocity):
+                  rgbs.set(3,[0,255,0])
+                  rgbs.show()
 
 
 # ==========================================================================================================================================================================================       
