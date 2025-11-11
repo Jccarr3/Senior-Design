@@ -343,7 +343,13 @@ while True:
       
       if state == "ATTACK":
          # This is a high-confidence, high-speed charge towards the opponent. The robot should maintain this state until a white line is detected or the opponent is lost. A controller will
-         # be implemented to maintain opponent lock-on via the proximity sensors during the charge. Use the
+         # be implemented to maintain opponent lock-on via the proximity sensors during the charge. Use the proximity sensor readings to make small adjustments to the motor speeds to maintain 
+         # opponent lock-on. 
+         # Attack State Exit Options
+            # Option 1: Double-Condition Target Loss - If all sensors have lost the opponent AND sudden acceleration is detected via the IMU (indicating the robot has lost contact with the 
+            # target), return to the SCAN state. This allows for the controller to take advantage of the recent history of the proximity sensors to try and maintain lock-on. 
+            # Option 2: Single-Condition Target Loss - If all sensors have lost the opponent, return to the SCAN state. This is a more aggressive exit condition that may result in faster
+            # reacquisition of the opponent, but may also result in premature exit from the ATTACK state.
 
          pass
       
