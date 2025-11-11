@@ -50,7 +50,11 @@ INDEX_SIZE = const(50)
 acc_vals = [0] * INDEX_SIZE
 prev_velocity = 0
 contact = 0
+<<<<<<< HEAD
 # ==================================== #
+=======
+avg_acc = 0
+>>>>>>> 186db3eadc42739bed33558cbf58a567ce024aee
 
 # ========== TRACKING CONSTANTS ==========
 SENSOR_THRESHOLD = const(1)
@@ -206,6 +210,7 @@ def find_speed():       #calculates speed of robot every 50ms
    global prev_acc_pull_count
    global velocity
    global prev_velocity
+   global avg_acc
 
    
    imu.read()
@@ -222,11 +227,11 @@ def find_speed():       #calculates speed of robot every 50ms
    if acc_index == INDEX_SIZE:
       acc_index = 0
       avg_acc = sum(acc_vals) / INDEX_SIZE * 9.8
-      dt = time.ticks_diff(time.ticks_ms(),prev_speed_time) / 1000
-      prev_speed_time = time.ticks_ms()
-      velocity += avg_acc * dt
-      if velocity < 0:
-         velocity = 0
+      # dt = time.ticks_diff(time.ticks_ms(),prev_speed_time) / 1000
+      # prev_speed_time = time.ticks_ms()
+      # velocity += avg_acc * dt
+      # if velocity < 0:
+      #    velocity = 0
 
 
 
@@ -339,21 +344,15 @@ while True:
       if state == "TIMER":
          find_speed()
          if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
-            contact += 1
-            if contact == 5:
-               prev_velocity = velocity
-            display.fill(0)
-            display.text(f"Velocity: {velocity:.2f}",0,0)
-            display.text(f"Prev: {prev_velocity:.2f}",0,10)
-            display.show()
             if(CHARGE_SPEED < MAX_SPEED):
                CHARGE_SPEED += 100
                motors.set_speeds(CHARGE_SPEED,CHARGE_SPEED)
-
          
-         if(time.ticks_ms() >= escape_time and (velocity > prev_velocity)):
-            velocity = 0
-            prev_velocity = 0
+         if avg_acc < 0:
+            contact = 1
+         
+         
+         if(time.ticks_ms() >= escape_time and (contact == 0)):
             CHARGE_SPEED = 2500
             state = back_to
             rgbs.set(4, [0,0,0])
