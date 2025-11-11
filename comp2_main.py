@@ -237,37 +237,47 @@ current_right_speed = 0
 
 # ========== MOTOR CONTROL FUNCTION ==========
 # The function is the main motor API used for controlling the motors. It includes built-in ramp-up functionality to prevent brownout conditions. The
-# function does not use blocking delays, allowing for use in the main round-robin loop without hindering other processes. It returns a boolean
-# indicating whether the motors are currently ramping up or have reached the target speeds. Since the function is used as the centralized control
-# for the motors, it should maintain and update global speed variables for each motor instead of the program managing the speeds externally. The 
-# control function only ramps up the motors, it permits immediate deceleration to the target speeds to allow for quick stops when necessary.
+# function uses a blocking periodic ramp-up approach to gradually increase the motor speeds to the target speeds. It incorporates priority calls to 
+# the white line detection function, floor_scan(), to ensure that white line detection is not hindered during motor ramp-up. This allows for 
+# simplified program flow in othe parts of the code. It is very important that while the motor control function is operating it is always checking for
+# white line detection even if its otherwise idle waiting for the next ramp-up point. Since the function is used as the centralized control for the 
+# motors, it should maintain and update global speed variables for each motor instead of the program managing the speeds externally. The control 
+# function only ramps up the motors, it permits immediate deceleration to the target speeds to allow for quick stops when necessary. The ramp-up 
+# should be done in periodic time increments, which is handled in the control function itself via internal timing checks.
 def motor_control(target_left_speed, target_right_speed):
-    global current_left_speed, current_right_speed
+   global current_left_speed
+   global current_right_speed
 
-    RAMP_STEP = 200  # Speed increment for ramp-up
+   RAMP_UP_INCREMENT = 500      # Speed increment for each ramp-up step
+   RAMP_UP_INTERVAL_MS = 50     # Time interval between ramp-up steps
 
-    # Ramp-up logic for left motor
-    if current_left_speed < target_left_speed:
-        current_left_speed += RAMP_STEP
-        if current_left_speed > target_left_speed:
-            current_left_speed = target_left_speed
-    elif current_left_speed > target_left_speed:
-        current_left_speed = target_left_speed  # Immediate deceleration
+   last_ramp_time = time.ticks_ms()
 
-    # Ramp-up logic for right motor
-    if current_right_speed < target_right_speed:
-        current_right_speed += RAMP_STEP
-        if current_right_speed > target_right_speed:
-            current_right_speed = target_right_speed
-    elif current_right_speed > target_right_speed:
-        current_right_speed = target_right_speed  # Immediate deceleration
+   while (current_left_speed != target_left_speed) or (current_right_speed != target_right_speed):
 
-    # Set the motor speeds
-    motors.set_speeds(current_left_speed, current_right_speed)
+      # Check if it's time for the next ramp-up step
+      if time.ticks_diff(time.ticks_ms(), last_ramp_time) >= RAMP_UP_INTERVAL_MS:
+         last_ramp_time = time.ticks_ms()
 
-    # Determine if ramping is still in progress
-    ramping = (current_left_speed != target_left_speed) or (current_right_speed != target_right_speed)
-    return ramping
+         # Ramp up left motor speed
+         if current_left_speed < target_left_speed:
+            current_left_speed = min(current_left_speed + RAMP_UP_INCREMENT, target_left_speed) # Use the min function to avoid overshooting.
+         elif current_left_speed > target_left_speed:
+            current_left_speed = target_left_speed  # Immediate deceleration
+
+         # Ramp up right motor speed
+         if current_right_speed < target_right_speed:
+            current_right_speed = min(current_right_speed + RAMP_UP_INCREMENT, target_right_speed) # Use the min function to avoid overshooting.
+         elif current_right_speed > target_right_speed:
+            current_right_speed = target_right_speed  # Immediate deceleration
+
+         # Set the motor speeds
+         motors.set_speeds(current_left_speed, current_right_speed)
+
+      # If the floor scan functino sets the state to RECOVER, exit the motor control function immediately.
+      floor_scan()
+      if state == "RECOVER":
+         break
 # ==============================
       
 #Functions involving IMU
