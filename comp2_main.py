@@ -229,10 +229,46 @@ def find_speed():       #calculates speed of robot every 50ms
       if velocity < 0:
          velocity = 0
 
+# ========== GLOBAL VARIABLES ==========
+# Global Motor Variables
+current_left_speed = 0
+current_right_speed = 0
+# ====================================== #
 
+# ========== MOTOR CONTROL FUNCTION ==========
+# The function is the main motor API used for controlling the motors. It includes built-in ramp-up functionality to prevent brownout conditions. The
+# function does not use blocking delays, allowing for use in the main round-robin loop without hindering other processes. It returns a boolean
+# indicating whether the motors are currently ramping up or have reached the target speeds. Since the function is used as the centralized control
+# for the motors, it should maintain and update global speed variables for each motor instead of the program managing the speeds externally. The 
+# control function only ramps up the motors, it permits immediate deceleration to the target speeds to allow for quick stops when necessary.
+def motor_control(target_left_speed, target_right_speed):
+    global current_left_speed, current_right_speed
 
+    RAMP_STEP = 200  # Speed increment for ramp-up
 
+    # Ramp-up logic for left motor
+    if current_left_speed < target_left_speed:
+        current_left_speed += RAMP_STEP
+        if current_left_speed > target_left_speed:
+            current_left_speed = target_left_speed
+    elif current_left_speed > target_left_speed:
+        current_left_speed = target_left_speed  # Immediate deceleration
 
+    # Ramp-up logic for right motor
+    if current_right_speed < target_right_speed:
+        current_right_speed += RAMP_STEP
+        if current_right_speed > target_right_speed:
+            current_right_speed = target_right_speed
+    elif current_right_speed > target_right_speed:
+        current_right_speed = target_right_speed  # Immediate deceleration
+
+    # Set the motor speeds
+    motors.set_speeds(current_left_speed, current_right_speed)
+
+    # Determine if ramping is still in progress
+    ramping = (current_left_speed != target_left_speed) or (current_right_speed != target_right_speed)
+    return ramping
+# ==============================
       
 #Functions involving IMU
 
