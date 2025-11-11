@@ -146,34 +146,34 @@ def proximity_scan():
 #ALL FUNCTIONS INVOLVING MOTORS
    #right recovery function(used for recovering from edge detection)
 def right_recovery():
-   motor_control(-1*5800,-1*1800)
+   motors.set_speeds(-1*5800,-1*1800)
    time.sleep_ms(750)
-   motor_control(0, 0)
+   motors.off()
    #right recovery function(used for recovering from edge detection)
 
    #left recovery function(used for recovering from edge detection)
 def left_recovery():
-   motor_control(-1*1800,-1*5800)
+   motors.set_speeds(-1*1800,-1*5800)
    time.sleep_ms(750)
-   motor_control(0, 0)
+   motors.off()
    #left recovery function(used for recovering from edge detection)
 
    #Question mark shape(used as a startup option to get behind opponent)
 def question_mark_kick():
-   motor_control(-1*1800,-1*5800)
+   motors.set_speeds(-1*1800,-1*5800)
    time.sleep_ms(1100)
-   motor_control(-1*5800,-1*1800)
+   motors.set_speeds(-1*5800,-1*1800)
    time.sleep_ms(500)
-   motor_control(0, 0)
+   motors.off()
    #Question mark shape(used as a startup option to get behind opponent
 
    #Inverse question mark
 def inv_question_mark_kick():
-   motor_control(-1*5800, -1*1800)
+   motors.set_speeds(-1*5800, -1*1800)
    time.sleep_ms(1100)
-   motor_control(-1*1800, -1*5800)
+   motors.set_speeds(-1*1800, -1*5800)
    time.sleep_ms(500)
-   motor_control(0, 0)
+   motors.off()
    #Inverse question mark
 
    # ========== TRACKING HELPER FUNCTIONS ==========
@@ -265,8 +265,8 @@ def motor_control(target_left_speed, target_right_speed):
    global current_left_speed
    global current_right_speed
 
-   RAMP_UP_INCREMENT = 1000      # Speed increment for each ramp-up step
-   RAMP_UP_INTERVAL_MS = 5     # Time interval between ramp-up steps
+   RAMP_UP_INCREMENT = 500      # Speed increment for each ramp-up step
+   RAMP_UP_INTERVAL_MS = 25     # Time interval between ramp-up steps
 
    last_ramp_time = time.ticks_ms() - RAMP_UP_INTERVAL_MS  # Initialize the last ramp-up time variable to allow immediate ramp-up.
 
