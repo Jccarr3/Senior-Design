@@ -251,7 +251,7 @@ def motor_control(target_left_speed, target_right_speed):
    RAMP_UP_INCREMENT = 500      # Speed increment for each ramp-up step
    RAMP_UP_INTERVAL_MS = 50     # Time interval between ramp-up steps
 
-   last_ramp_time = time.ticks_ms()
+   last_ramp_time = time.ticks_ms() - RAMP_UP_INTERVAL_MS  # Initialize the last ramp-up time variable to allow immediate ramp-up.
 
    while (current_left_speed != target_left_speed) or (current_right_speed != target_right_speed):
 
