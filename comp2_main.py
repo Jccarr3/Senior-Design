@@ -52,7 +52,7 @@ prev_velocity = 0
 contact = 0
 # ==================================== #
 
-# ========== TRACKING CONSTANTS ==========
+# ========== MACROS ==========
 SENSOR_THRESHOLD = const(1)
 MAX_SPEED = const(6000)
 TURN_SPEED_MAX = const(1800)
@@ -62,6 +62,7 @@ DECELERATION = const(150)
 ACCELERATION = const(150)
 DIR_LEFT = const(0)
 DIR_RIGHT = const(1)
+PRELIMINARY_CHARGE_DURATION_MS = const(300)
 # ==================================== #
 
 # ========== TRACKING STATE VARIABLES ==========
@@ -268,62 +269,72 @@ while True:
             question_mark_kick()
          if go == 3:                      #inverse question mark shape to get behind opponent
             inv_question_mark_kick()
-         state = "ATTACK"
-      if state == "ATTACK":
+         state = "SCAN"
+
+      if state == "SCAN":
+         # First, read the proximity sensors to check for the target.
          proximity_sensors.read()
          reading_left = proximity_sensors.left_counts_with_left_leds()
          reading_front_left = proximity_sensors.front_counts_with_left_leds()
          reading_front_right = proximity_sensors.front_counts_with_right_leds()
          reading_right = proximity_sensors.right_counts_with_right_leds()
 
-
-
-         # Determine if an object is visible or not.
+         # Determine if the target has been seen.
          object_seen = any(reading > SENSOR_THRESHOLD for reading in \
             (reading_left, reading_front_left, reading_front_right, reading_right))
-
+         
+         # Adjust the turn speed based on whether an object is seen. If the target is seen, decelerate and begin triangulation for preliminary charge.
+         # If the target is not seen, increase scan speed to maintain quick target acquisition.
          if object_seen:
-            # An object is visible, so we will start decelerating
             turn_speed -= DECELERATION
          else:
-            # An object is not visible, so we will accelerate
             turn_speed += ACCELERATION
+         turn_speed = min(TURN_SPEED_MAX, max(TURN_SPEED_MIN, turn_speed)) # Constrain the turn speed.
 
-         # Constrain the turn speed
-         turn_speed = min(TURN_SPEED_MAX, max(TURN_SPEED_MIN, turn_speed))
-         
+         # If an object is seen, begin triangulation to center the target.
          if object_seen:
-            # --- Object IS Seen ---
+            # If the object is centered, execute a preliminary charge.
             if abs(max(reading_left, reading_front_left) - max(reading_right, reading_front_right)) <= 1:
-               # Object is centered, charge forward
+               # Make a call to the motor API to charge forward. The API has built-in ramp-up functionality to prevent a brownout condition.
+               # motor_control(CHARGE_SPEED, CHARGE_SPEED) - This is a placeholder for the actual motor API call.
+
+               # Option 1: Use a non-blocking timer to allow for limited-duration charge while maintaining white line detection. This was the option used during Competition One.
+               # DO NOT USE THE TIMER.SLEEP_MS() FUNCTION FOR NON-CORRECTIVE, LIMITED-DURATION CHARGES. THIS WILL BLOCK THE WHITE LINE DETECTION.
+               # Transition to the TIMER state to allow for a non-corrective, non-blocking, limited-duration charge. 
                back_to = state
                state = "TIMER"
-               contact = 0
-               prev = 0
-               escape_time = time.ticks_ms() + 500
-               charge_forward()  # This will now run
-               rgbs.set(4, [255,255,255])
-               rgbs.show()
+               escape_time = time.ticks_ms() + PRELIMINARY_CHARGE_DURATION_MS
+
+               # Option 2: Detection State - Similar to the TIMER state, but monitors the IMU for contact with the opponent during the preliminary charge. This option is designed to enhance
+               # opponent lock-on as Option 1 inefficiently exits and re-enters the SCAN state after the limited-duration charge.
+               # Transition to a detection state that monitors for contact via the IMU during a preliminary (non-corrective, limited-duration) charge
+               # state = "DETECTION"
 
             elif max(reading_left, reading_front_left) > max(reading_right, reading_front_right):
-               # Object is to the left, turn left
-               turn_left()
+               # motor_control(-turn_speed, turn_speed) - This is a placeholder for the actual motor API call.
                sense_dir = DIR_LEFT
 
             elif max(reading_left, reading_front_left) < max(reading_right, reading_front_right):
-                # Object is to the right, turn right
-               turn_right()
+               # motor_control(turn_speed, -turn_speed) - This is a placeholder for the actual motor API call.
                sense_dir = DIR_RIGHT
-               
          else:
-            # --- Object is NOT Seen ---
-            # Keep turning in the direction we last sensed the object.
+            # If an object is not seen, continue turning in the last known direction of the target.
             if sense_dir == DIR_RIGHT:
-               turn_right() # This will now run
+               # motor_control(turn_speed, -turn_speed) - This is a placeholder for the actual motor API call.
+               pass # This will now run
 
             elif sense_dir == DIR_LEFT:
-               turn_left() # This will now run
-      # ==============================
+               # motor_control(-turn_speed, turn_speed) - This is a placeholder for the actual motor API call.
+               pass # This will now run
+      
+      if state == "DETECTION":
+         # Monitor the IMU for contact with the opponent during the preliminary charge. This is determined by a sudden deceleration as read by the IMU.
+         pass
+      
+      if state == "ATTACK":
+         # Transition to the attack state if a preliminary charge results in contact with the opponet. This is determined by a sudden deceleration as read by the IMU.
+         pass
+      
       if state == "RECOVER":
          rgbs.set(4, [0,0,0])
          rgbs.show()
@@ -379,23 +390,3 @@ while True:
                if velocity < (prev_velocity):
                   rgbs.set(3,[0,255,0])
                   rgbs.show()
-
-
-# ==========================================================================================================================================================================================       
-# Centralized State-Based Machine Controller 
-# Version: 1
-#
-# Revision History:
-# 10/27/25 Jordan Carr, Rohit Sood - Created Version 1 
-#
-# States: 
-#     1. Defense - The Defense state of the machine controller is a specialized, prioritized state designed to immediately recover the robot when one or more of its IR line detectors is
-#        above the white line detection threshold. The robot will take different recovery patterns based on the set detection flags. If only one or two of the far-side IR line detectors 
-#        is above the threshold, the robot should take a wide sweeping motion away from the edge in the direction of the side with the non-triggered sensors. 
-#        If both sides of the 5-sensor array are triggered or the center sensor is fully saturated, the robot should immediately commence a time-based, straight-line reverse. At the 
-#        half-way point the robot should make a quick 180 degree turn and continue its trajectory until it reaches the center (i.e. when the timer expires). The 180 degree turn accomplishes two primary goals:
-#           a) It allows the robot to scan the arena using its front and side-facing proximity sensors.
-#           b) It equally splits time between both blind spot directions. When the robot is initially reversing from the edge it cannot detect anything behind it (i.e. anything further away from the edge). 
-#              Turning halfway through the retreat process allows the robot to change its blind spot.
-#        The 180 degree turn is a critical opportunity to scan for the opponent and immediately engage in an offensive charge if the turn revealed the targets direction and/or position. 
-#     2. Offense
