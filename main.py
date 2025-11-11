@@ -50,11 +50,8 @@ INDEX_SIZE = const(50)
 acc_vals = [0] * INDEX_SIZE
 prev_velocity = 0
 contact = 0
-<<<<<<< HEAD
 # ==================================== #
-=======
 avg_acc = 0
->>>>>>> 186db3eadc42739bed33558cbf58a567ce024aee
 
 # ========== TRACKING CONSTANTS ==========
 SENSOR_THRESHOLD = const(1)
