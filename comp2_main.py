@@ -274,7 +274,7 @@ def motor_control(target_left_speed, target_right_speed):
    target_left_speed = max(-MAX_SPEED, min(MAX_SPEED, target_left_speed))
    target_right_speed = max(-MAX_SPEED, min(MAX_SPEED, target_right_speed))
 
-   while (current_left_speed != target_left_speed) or (current_right_speed != target_right_speed):
+   while ((current_left_speed != target_left_speed) or (current_right_speed != target_right_speed)) and (state != "RECOVER"):
 
       # Check if it's time for the next ramp-up step
       if time.ticks_diff(time.ticks_ms(), last_ramp_time) >= RAMP_UP_INTERVAL_MS:
