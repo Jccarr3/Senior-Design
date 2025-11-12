@@ -166,6 +166,16 @@ def inv_question_mark_kick():
    motors.off()
    #Inverse question mark
 
+def semi_circle_CCW():
+   motors.set_speeds(-1*5800, -1*1800)
+   time.sleep_ms(1300)
+   motors.off()
+
+def semi_circle_CW():
+   motors.set_speeds(-1*1800, -1*5800)
+   time.sleep_ms(1300)
+   motors.off()
+
    # ========== TRACKING HELPER FUNCTIONS ==========
 def turn_right():
     global turning_left, turning_right
@@ -211,7 +221,7 @@ def find_speed():       #calculates speed of robot every 50ms
 
 #main code execution
 while True:
-   if time.ticks_diff(time.ticks_ms(), led_time) > 1000:
+   if time.ticks_diff(time.ticks_ms(), led_time) > 250:
       led_time = time.ticks_ms()
       led_toggle = not led_toggle
       if led_toggle:
@@ -246,13 +256,17 @@ while True:
 
       #code for proximity
       if state == "START":
-         go = random.randint(1, 3)
+         go = random.randint(1, 5)
          if go == 1:                      #speed blitz
             motors.set_speeds(5500,5500)
          if go == 2:                      #question mark shape to get behind opponent 
             question_mark_kick()
          if go == 3:                      #inverse question mark shape to get behind opponent
             inv_question_mark_kick()
+         if go == 4:
+            semi_circle_CCW()
+         if go == 5:
+            semi_circle_CW()
          state = "ATTACK"
       if state == "ATTACK":
          proximity_sensors.read()
