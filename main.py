@@ -168,12 +168,12 @@ def inv_question_mark_kick():
 
 def semi_circle_CCW():
    motors.set_speeds(-1*5800, -1*1800)
-   time.sleep_ms(1300)
+   time.sleep_ms(1500)
    motors.off()
 
 def semi_circle_CW():
    motors.set_speeds(-1*1800, -1*5800)
-   time.sleep_ms(1300)
+   time.sleep_ms(1500)
    motors.off()
 
    # ========== TRACKING HELPER FUNCTIONS ==========
