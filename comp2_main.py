@@ -28,6 +28,8 @@ display = robot.Display()
 # LEDs
 rgbs = robot.RGBLEDs()
 rgbs.set_brightness(1)
+led_toggle = False
+led_time = 0
 
 # Buttons
 button_a = robot.ButtonA()
@@ -305,6 +307,16 @@ def motor_control(target_left_speed, target_right_speed):
 
 #main code execution
 while True:
+   if time.ticks_diff(time.ticks_ms(), led_time) > 250:
+      led_time = time.ticks_ms()
+      led_toggle = not led_toggle
+      if led_toggle:
+         rgbs.set(3,[255,0,0])
+         rgbs.set(5,[255,0,0])
+      else:
+         rgbs.set(3,[0,0,0])
+         rgbs.set(5,[0,0,0])
+      rgbs.show()
    #polling for button input/trigger
    if flag == 0:
       if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
