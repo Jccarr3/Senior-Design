@@ -297,7 +297,7 @@ def motor_control(target_left_speed, target_right_speed):
          # Set the motor speeds
          motors.set_speeds(current_left_speed, current_right_speed)
 
-      # If the floor scan functino sets the state to RECOVER, exit the motor control function immediately.
+      # If the floor scan function sets the state to RECOVER, exit the motor control function immediately.
       floor_scan()
       if state == "RECOVER":
          break
@@ -407,24 +407,30 @@ while True:
             if sense_dir == DIR_RIGHT:
                # motor_control(turn_speed, -turn_speed) - This is a placeholder for the actual motor API call.
                motor_control(turn_speed, -turn_speed)
-
+               rgbs.set(0,[255,0,255])                # The "0" is a placeholder for the actual LED value, I don't know where the right LED is on the robot - Shivy
+               rgbs.show()
                pass
 
             elif sense_dir == DIR_LEFT:
                # motor_control(-turn_speed, turn_speed) - This is a placeholder for the actual motor API call.
                motor_control(-turn_speed, turn_speed)
-
+               rgbs.set(0,[0,0,255])                  # The "0" is a placeholder for the actual LED value, I don't know where the left LED is on the robot - Shivy
+               rgbs.show()
                pass
       
       if state == "DETECTION":
+         # This resets the left and right LEDs turned on from the sense_dir sequence
+         rgbs.set(0,[0,0,0])              # The "0" is a placeholder for the actual LED value
+         rgbs.set(0,[0,0,0])              # The "0" is a placeholder for the actual LED value
+         rgbs.show() 
          # Monitor the IMU for contact with the opponent during the preliminary charge. This is determined by a sudden deceleration as read by the IMU.
-
+          
          # Add the current acceleration reading to a buffer and compute the average acceleration when the buffer is full. If the average acceleration exceeds a defined threshold, 
          # transition to the ATTACK state. Note, if the detection duration expires without contact, return to the SCAN state.
 
          # accl_buffer[accl_index] = IMU.accelerometer
          # accl_index++
-         #
+         # 
          # if (accl_index >= accl_buffer_size) {
          #      avg_accl = avg(accl_buffer)
          #
