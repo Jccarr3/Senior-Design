@@ -407,21 +407,21 @@ while True:
             if sense_dir == DIR_RIGHT:
                # motor_control(turn_speed, -turn_speed) - This is a placeholder for the actual motor API call.
                motor_control(turn_speed, -turn_speed)
-               rgbs.set(0,[255,0,255])                # The "0" is a placeholder for the actual LED value, I don't know where the right LED is on the robot - Shivy
+               rgbs.set(2,[255,0,255])                # The "4" is a placeholder for the actual LED value, I don't know where the right LED is on the robot - Shivy
                rgbs.show()
                pass
 
             elif sense_dir == DIR_LEFT:
                # motor_control(-turn_speed, turn_speed) - This is a placeholder for the actual motor API call.
                motor_control(-turn_speed, turn_speed)
-               rgbs.set(0,[0,0,255])                  # The "0" is a placeholder for the actual LED value, I don't know where the left LED is on the robot - Shivy
+               rgbs.set(4,[0,0,255])                  # The "2" is a placeholder for the actual LED value, I don't know where the left LED is on the robot - Shivy
                rgbs.show()
                pass
       
       if state == "DETECTION":
          # This resets the left and right LEDs turned on from the sense_dir sequence
-         rgbs.set(0,[0,0,0])              # The "0" is a placeholder for the actual LED value
-         rgbs.set(0,[0,0,0])              # The "0" is a placeholder for the actual LED value
+         rgbs.set(2,[0,0,0])              # The "2" is a placeholder for the actual LED value
+         rgbs.set(4,[0,0,0])              # The "4" is a placeholder for the actual LED value
          rgbs.show() 
          # Monitor the IMU for contact with the opponent during the preliminary charge. This is determined by a sudden deceleration as read by the IMU.
           
