@@ -6,7 +6,7 @@ import random
 # ==================================== #
 
 # Start Trigger GPIO Pin
-trigger = Pin(28, Pin.IN, Pin.PULL_DOWN)
+trigger = Pin(28, Pin.IN)
 
 # Start Flag 
 flag = 0
@@ -234,9 +234,10 @@ while True:
 
    #polling for button input/trigger
    if flag == 0:
-      if time.ticks_diff(time.ticks_ms(), prev_time) > 50:
+    
+      if time.ticks_diff(time.ticks_ms(), prev_time) > 10:
          prev_time = time.ticks_ms()
-         if button_a.is_pressed():                       #check for start signal from button A
+         if button_a.is_pressed() or trigger.value() == 1:                       #check for start signal from button A
             line_sensors.calibrate()                     #calibrate line sensors 
             black = line_sensors.read()[2]
 
